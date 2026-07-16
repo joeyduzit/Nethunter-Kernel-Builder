@@ -112,7 +112,10 @@ jobs:
           CC_TARGET=$(echo $params | jq -r ".CC")   # keep separately as target CC
           echo "ARCH=$ARCH" >> $GITHUB_ENV
 
-          # Force host tools to use system gcc/g++
+          # Force host tools to always use system GCC/G++
+          # Host-side kernel build tools (devicetable-offsets, bounds, dtc) use inline assembly
+          # that is incompatible with Clang. This ensures they are built with GCC regardless
+          # of the target compiler configuration.
           args="-j$(nproc --all) HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++ CC_FOR_BUILD=/usr/bin/gcc \
           LD=/usr/bin/ld HOSTLD=/usr/bin/ld NATIVELD=/usr/bin/ld"
 
@@ -149,9 +152,9 @@ jobs:
             echo "CC_TARGET=$CC_TARGET" >> $GITHUB_ENV
           fi
 
-          # Defensive: suppress Clang incompatible-library-redeclaration being treated as an error
-          # (only if you still hit the clang redeclaration problem)
-          args="$args KCFLAGS=-Wno-error=incompatible-library-redeclaration -Wno-incompatible-library-redeclaration"
+          # Suppress Clang incompatible-library-redeclaration warnings
+          # These are safe to suppress as they relate to system libc definitions
+          args="$args KCFLAGS='-Wno-error=incompatible-library-redeclaration -Wno-incompatible-library-redeclaration'"
 
           echo "args=$args" >> $GITHUB_OUTPUT
           extra_params=$(echo $extraParams | jq -r ' to_entries[] | select(.value != "") | "\(.key)=\(.value)"' | tr "\n" " " | sed 's/ $//')
