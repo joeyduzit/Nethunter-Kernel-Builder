@@ -57,6 +57,8 @@ jobs:
           sudo apt-get install -y libc6-i386 lib32z1 lib32stdc++6 libgcc-s1:i386
           sudo apt-get install -y libc6:i386 libstdc++6:i386
           sudo apt-get install -y gcc-multilib g++-multilib
+
+          which arm-linux-gnueabi-gcc || echo "Compiler not in PATH, locating..."
           
       - name: "🌟 Clone kernel source => (${{ env.kernelRepo }})"
         working-directory: ./${{ env.kernelDir }}
@@ -69,7 +71,12 @@ jobs:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
           SYSTEM_PATH="$PATH"
-          
+
+           if ! command -v arm-linux-gnueabi-gcc &> /dev/null; then
+             echo "Warning: arm-linux-gnueabi-gcc not found in PATH"
+             export PATH="$(dpkg -L gcc-arm-linux-gnueabi | grep bin | head -1 | xargs dirname):$PATH"
+           fi
+           
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo $toolchains_num
           for ((i=0;i<toolchains_num;i++)); do
