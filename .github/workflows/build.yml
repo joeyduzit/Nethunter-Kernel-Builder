@@ -72,10 +72,14 @@ jobs:
         run: |
           SYSTEM_PATH="$PATH"
 
-           if ! command -v arm-linux-gnueabi-gcc &> /dev/null; then
-             echo "Warning: arm-linux-gnueabi-gcc not found in PATH"
-             export PATH="$(dpkg -L gcc-arm-linux-gnueabi | grep bin | head -1 | xargs dirname):$PATH"
-           fi
+          ARM32_GCC_PATH=$(which arm-linux-gnueabi-gcc 2>/dev/null || dpkg -L gcc-arm-linux-gnueabi 2>/dev/null | grep -E 'bin/arm-linux-gnueabi-gcc$' | head -1)
+          if [ -n "$ARM32_GCC_PATH" ]; then
+            ARM32_BIN_DIR=$(dirname "$ARM32_GCC_PATH")
+            export PATH="$ARM32_BIN_DIR:$PATH"
+            echo "ARM32 compiler found at: $ARM32_BIN_DIR"
+          else
+            echo "Warning: arm-linux-gnueabi-gcc not found"
+          fi
            
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo $toolchains_num
