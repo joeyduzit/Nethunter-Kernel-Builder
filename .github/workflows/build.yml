@@ -117,7 +117,7 @@ jobs:
             args="$args CLANG_TRIPLE=$CLANG_TRIPLE"
           fi
           if [ -n "$CROSS_COMPILE_ARM32" ]; then
-            args="$args CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32"
+            args="$args CROSS_COMPILE_ARM32=/usr/bin/arm-linux-gnueabi-"
           fi
           if [ -n "$AR" ]; then
             args="$args AR=$AR"
