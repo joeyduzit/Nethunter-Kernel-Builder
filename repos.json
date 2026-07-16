@@ -1,9 +1,9 @@
 [  {
     "kernelSource": {
-      "name": "MikasaNethunter",
-      "repo": "https://github.com/noophyy/mikasa_kernel_realme2_c1.git",
-      "branch": "Light",
-      "device": "mikasa"
+      "name": "Nethunter_Kernel",
+      "repo": "https://github.com/LineageOS/android_kernel_google_marlin.git",
+      "branch": "lineage-16.0",
+      "device": "marlin"
     },
     "withKernelSU": false,
     "toolchains": [
