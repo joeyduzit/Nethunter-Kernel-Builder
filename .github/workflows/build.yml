@@ -53,7 +53,7 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          sudo apt-get install -y build-essential bc curl git zip ftp gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev python3 libarchive-tools flex bison
+          sudo apt-get install -y build-essential bc curl git zip ftp gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi libssl-dev lftp zstd wget libfl-dev python3 libarchive-tools
           sudo apt-get install -y libc6-i386 lib32z1 lib32stdc++6 libgcc-s1:i386
           sudo apt-get install -y libc6:i386 libstdc++6:i386
           sudo apt-get install -y gcc-multilib g++-multilib
@@ -80,7 +80,7 @@ jobs:
           else
             echo "Warning: arm-linux-gnueabi-gcc not found"
           fi
-           
+          
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo $toolchains_num
           for ((i=0;i<toolchains_num;i++)); do
@@ -109,36 +109,51 @@ jobs:
           CROSS_COMPILE_ARM32=$(echo $params | jq -r ".CROSS_COMPILE_ARM32")
           CLANG_TRIPLE=$(echo $params | jq -r ".CLANG_TRIPLE")
           AR=$(echo $params | jq -r ".AR")
-          CC=$(echo $params | jq -r ".CC")
-
+          CC_TARGET=$(echo $params | jq -r ".CC")   # keep separately as target CC
           echo "ARCH=$ARCH" >> $GITHUB_ENV
 
-          args="-j$(nproc --all) HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++ LD=/usr/bin/ld HOSTLD=/usr/bin/ld NATIVELD=/usr/bin/ld"
+          # Force host tools to use system gcc/g++
+          args="-j$(nproc --all) HOSTCC=/usr/bin/gcc HOSTCXX=/usr/bin/g++ CC_FOR_BUILD=/usr/bin/gcc \
+          LD=/usr/bin/ld HOSTLD=/usr/bin/ld NATIVELD=/usr/bin/ld"
+
+          # O= output dir
           if [ -n "${{ env.OUT_DIR }}" ]; then
             mkdir -p $(pwd)/${{ env.OUT_DIR }}
             args="$args O=$(pwd)/${{ env.OUT_DIR }}"
           fi
+
           if [ -n "$ARCH" ]; then
             args="$args ARCH=$ARCH"
           fi
+
           if [ -n "$CROSS_COMPILE" ]; then
             args="$args CROSS_COMPILE=$CROSS_COMPILE"
           fi
+
           if [ -n "$CLANG_TRIPLE" ]; then
             args="$args CLANG_TRIPLE=$CLANG_TRIPLE"
           fi
+
           if [ -n "$CROSS_COMPILE_ARM32" ]; then
             ARM32_COMPILER=$(which arm-linux-gnueabi-gcc | sed 's/-gcc$//')
             args="$args CROSS_COMPILE_ARM32=${ARM32_COMPILER}-"
           fi
+
           if [ -n "$AR" ]; then
             args="$args AR=$AR"
           fi
-          if [ -n "$CC" ]; then
-            args="$args CC=$CC"
+
+          # Do NOT append CC (target compiler) into the global args, keep it separate
+          if [ -n "$CC_TARGET" ] && [ "$CC_TARGET" != "null" ]; then
+            echo "Using target CC: $CC_TARGET" >&2
+            echo "CC_TARGET=$CC_TARGET" >> $GITHUB_ENV
           fi
+
+          # Defensive: suppress Clang incompatible-library-redeclaration being treated as an error
+          # (only if you still hit the clang redeclaration problem)
+          args="$args KCFLAGS=-Wno-error=incompatible-library-redeclaration -Wno-incompatible-library-redeclaration"
+
           echo "args=$args" >> $GITHUB_OUTPUT
-          echo "extraParams_toJson: $extraParams"
           extra_params=$(echo $extraParams | jq -r ' to_entries[] | select(.value != "") | "\(.key)=\(.value)"' | tr "\n" " " | sed 's/ $//')
           echo "args=$args $extra_params" >> $GITHUB_OUTPUT
 
@@ -167,7 +182,11 @@ jobs:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
           echo "PATH Variable: $PATH"
-          make ${{ env.args }} ${{ env.DEFCONFIG_NAME }}
+          if [ -n "${CC_TARGET}" ]; then
+            make ${{ steps.generate-args.outputs.args }} CC=${CC_TARGET} ${{ env.DEFCONFIG_NAME }}
+          else
+            make ${{ steps.generate-args.outputs.args }} ${{ env.DEFCONFIG_NAME }}
+          fi
 
       - name: "🏴‍☠️ Before Action "
         env:
@@ -186,6 +205,11 @@ jobs:
           args: ${{ steps.generate-args.outputs.args }}
         run: |
           echo "PATH Variable: $PATH"
+          if [ -n "${CC_TARGET}" ]; then
+            make ${{ steps.generate-args.outputs.args }} CC=${CC_TARGET}
+          else
+            make ${{ steps.generate-args.outputs.args }}
+          fi
 
       - name: "🏴‍☠️ Post Action "
         run: |
