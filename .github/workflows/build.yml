@@ -128,7 +128,8 @@ jobs:
             args="$args CLANG_TRIPLE=$CLANG_TRIPLE"
           fi
           if [ -n "$CROSS_COMPILE_ARM32" ]; then
-            args="$args CROSS_COMPILE_ARM32=/usr/bin/arm-linux-gnueabi-"
+            ARM32_COMPILER=$(which arm-linux-gnueabi-gcc | sed 's/-gcc$//')
+            args="$args CROSS_COMPILE_ARM32=${ARM32_COMPILER}-"
           fi
           if [ -n "$AR" ]; then
             args="$args AR=$AR"
