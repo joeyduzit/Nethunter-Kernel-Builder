@@ -68,6 +68,8 @@ jobs:
         env:
           toolchains: "${{ toJSON(matrix.repos.toolchains) }}"
         run: |
+          SYSTEM_PATH="$PATH"
+          
           toolchains_num="$(echo $toolchains | jq 'length')"
           echo $toolchains_num
           for ((i=0;i<toolchains_num;i++)); do
@@ -78,7 +80,8 @@ jobs:
             echo "$(pwd)/$name/" >> $GITHUB_PATH
             echo "$(pwd)/$name/bin" >> $GITHUB_PATH
           done
-
+          
+          export PATH="$SYSTEM_PATH:$PATH"
           echo "PATH Variable: $PATH"
 
       - name: "😎 Set args"
